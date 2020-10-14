@@ -1,0 +1,1 @@
+When .gitkeep fails use a dummy instead.

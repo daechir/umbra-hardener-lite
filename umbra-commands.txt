@@ -1,0 +1,9 @@
+This file contains various commands used to quickly assess changes in new Windows versions.
+
+SysCleanup
+
+Get-AppxPackage -PackageTypeFilter Main | ? { $_.SignatureKind -eq "System" } | Sort Name | Format-Table Name, InstallLocation
+Get-AppxProvisionedPackage -Online | Format-Table DisplayName, PackageName
+Get-WindowsCapability -Online | Where state -eq "Installed"
+Get-WindowsOptionalFeature -Online | Where state -eq  "Enabled"
+Get-ScheduledTask | Where state -eq "Ready"
