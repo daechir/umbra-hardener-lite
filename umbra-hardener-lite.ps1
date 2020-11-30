@@ -3,16 +3,18 @@
 #
 # Author: Daechir
 # Author URL: https://github.com/daechir
-# Modified Date: 10/14/20
-# Version: v1
+# Modified Date: 11/25/20
+# Version: v1a
 #
 #
 # ---------------------------------------------------------------------------------------------------------------------
 #
 #
 # Changelog:
-#		v1
-#			* This marks the beginning of Umbra Hardener Lite.
+#		v1a
+#			* Add additional bloatware.
+#			* Add MiscTweaks function.
+#			* Cleanup UITweaks function.
 #
 #
 # ---------------------------------------------------------------------------------------------------------------------
@@ -105,6 +107,7 @@ function SysCleanup {
 		"Microsoft.WinJS.2.0"
 		"Microsoft.Xbox.TCUI"
 		"Microsoft.XboxApp"
+		"Microsoft.XboxGameCallableUI"
 		"Microsoft.XboxGameOverlay"
 		"Microsoft.XboxGamingOverlay"
 		"Microsoft.XboxIdentityProvider"
@@ -123,15 +126,15 @@ function SysCleanup {
 		"Microsoft.Advertising.Xaml"
 
 		# Third party apps
+		"4DF9E0F8.Netflix"
+		"7EE7776C.LinkedInforWindows"
+		"9E2F88E3.Twitter"
+		"828B5831.HiddenCityMysteryofShadows"
 		"2414FC7A.Viber"
 		"41038Axilesoft.ACGMediaPlayer"
 		"46928bounde.EclipseManager"
-		"4DF9E0F8.Netflix"
 		"64885BlueEdge.OneCalendar"
-		"7EE7776C.LinkedInforWindows"
-		"828B5831.HiddenCityMysteryofShadows"
 		"89006A2E.AutodeskSketchBook"
-		"9E2F88E3.Twitter"
 		"A278AB0D.DisneyMagicKingdoms"
 		"A278AB0D.DragonManiaLegends"
 		"A278AB0D.MarchofEmpires"
@@ -144,8 +147,8 @@ function SysCleanup {
 		"C27EB4BA.DropboxOEM"
 		"CAF9E577.Plex"
 		"CyberLinkCorp.hs.PowerMediaPlayer14forHPConsumerPC"
-		"D52A8D61.FarmVille2CountryEscape"
 		"D5EA27B7.Duolingo-LearnLanguagesforFree"
+		"D52A8D61.FarmVille2CountryEscape"
 		"DB6EA5DB.CyberLinkMediaSuiteEssentials"
 		"DolbyLaboratories.DolbyAccess"
 		"Drawboard.DrawboardPDF"
@@ -190,11 +193,13 @@ function SysCleanup {
 		"Media.WindowsMediaPlayer*"
 		"Microsoft.Windows.MSPaint*"
 		"Microsoft.Windows.Notepad*"
+		"Microsoft.Windows.PowerShell.ISE*"
 		"Microsoft.Windows.WordPad*"
 		"OneCoreUAP.OneSync*"
 		"OpenSSH.Client*"
 		"OpenSSH.Server*"
 		"Print.Fax.Scan*"
+		"Print.Management.Console*"
 	)
 
 	write "`n ***** Now removing WindowsCapability features ***** `n"
@@ -209,10 +214,11 @@ function SysCleanup {
 		"FaxServicesClientPackage"
 		"LegacyComponents"
 		"MediaPlayback"
-		"MicrosoftWindowsPowerShellV2Root"
 		"Microsoft-Windows-Subsystem-Linux"
+		"MicrosoftWindowsPowerShellV2Root"
 		"MSRDC-Infrastructure"
 		"NetFx3"
+		"NetFx4-AdvSrvs"
 		"Printing-Foundation-Features"
 		"Printing-Foundation-InternetPrinting-Client"
 		"Printing-Foundation-LPDPrintService"
@@ -223,6 +229,9 @@ function SysCleanup {
 		"SMB1Protocol-Client"
 		"SMB1Protocol-Deprecation"
 		"SMB1Protocol-Server"
+		"SmbDirect"
+		"WCF-Services45"
+		"WCF-TCP-PortSharing45"
 		"WindowsMediaPlayer"
 		"WorkFolders-Client"
 	)
@@ -278,6 +287,22 @@ function SysCleanup {
 	}
 }
 
+function MiscTweaks {
+	# Disable Accessibility Key Prompts (Sticky keys, Toggle keys, Filter keys)
+	New-ItemProperty -Force -Path "HKCU:\Control Panel\Accessibility\StickyKeys" -Name "Flags" -PropertyType String -Value "506"
+	New-ItemProperty -Force -Path "HKCU:\Control Panel\Accessibility\ToggleKeys" -Name "Flags" -PropertyType String -Value "58"
+	New-ItemProperty -Force -Path "HKCU:\Control Panel\Accessibility\Keyboard Response" -Name "Flags" -PropertyType String -Value "122"
+	
+	# Disable Autoplay
+	New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers" -Name "DisableAutoplay" -PropertyType DWord -Value 1
+	
+	# Disable Autorun
+	New-ItemProperty -Force -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name "NoDriveTypeAutoRun" -PropertyType DWord -Value 255
+	
+	# Disable SharingWizard
+	New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "SharingWizardOn" -PropertyType DWord -Value 0
+}
+
 function NetworkTweaks {
 	# Disable DNS settings on adapters
 		# Append parent suffixes
@@ -321,9 +346,8 @@ function NetworkTweaks {
 	# Disable QoS
 	Disable-NetAdapterBinding -Name "*" -ComponentID "ms_pacer"
 
-	# Disable Remote Services
-		# SMB Server
-		Disable-NetAdapterBinding -Name "*" -ComponentID "ms_server"
+	# Disable SMB Server
+	Disable-NetAdapterBinding -Name "*" -ComponentID "ms_server"
 
 	# Harden Windows Firewall
 		# Remove all pre-existing firewall rules
@@ -340,38 +364,12 @@ function NetworkTweaks {
 	Set-NetConnectionProfile -NetworkCategory Public
 }
 
-function UITweak {
-	# Disable Accessibility Keys Prompts (Sticky keys, Toggle keys, Filter keys)
-	New-ItemProperty -Force -Path "HKCU:\Control Panel\Accessibility\StickyKeys" -Name "Flags" -PropertyType String -Value "506"
-	New-ItemProperty -Force -Path "HKCU:\Control Panel\Accessibility\ToggleKeys" -Name "Flags" -PropertyType String -Value "58"
-	New-ItemProperty -Force -Path "HKCU:\Control Panel\Accessibility\Keyboard Response" -Name "Flags" -PropertyType String -Value "122"
-
-	# Disable Explorer.exe
-		# 3D Access Shortcuts
-		Remove-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\MyComputer\NameSpace\{0DB7E03F-FC29-4DC6-9020-FF41B59E513A}" -Recurse -ErrorAction SilentlyContinue
-		New-ItemProperty -Force -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FolderDescriptions\{31C0DD25-9439-4F12-BF41-7FF4EDA38722}\PropertyBag" -Name "ThisPCPolicy" -PropertyType String -Value "Hide"
-		New-ItemProperty -Force -Path "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Explorer\FolderDescriptions\{31C0DD25-9439-4F12-BF41-7FF4EDA38722}\PropertyBag" -Name "ThisPCPolicy" -PropertyType String -Value "Hide"
-
-		# Give access to menu
-		Remove-Item -LiteralPath "HKCR:\*\shellex\ContextMenuHandlers\Sharing" -ErrorAction SilentlyContinue
-		Remove-Item -Path "HKCR:\Directory\Background\shellex\ContextMenuHandlers\Sharing" -ErrorAction SilentlyContinue
-		Remove-Item -Path "HKCR:\Directory\shellex\ContextMenuHandlers\Sharing" -ErrorAction SilentlyContinue
-		Remove-Item -Path "HKCR:\Drive\shellex\ContextMenuHandlers\Sharing" -ErrorAction SilentlyContinue
-
-		# Include in library menu
-		Remove-Item -Path "HKCR:\Folder\ShellEx\ContextMenuHandlers\Library Location" -ErrorAction SilentlyContinue
-
-		# Quickaccess menu
-		New-ItemProperty -Force -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" -Name "HubMode" -PropertyType DWord -Value 1
-
-		# Share menu
-		Remove-Item -LiteralPath "HKCR:\*\shellex\ContextMenuHandlers\ModernSharing" -ErrorAction SilentlyContinue
-
-	# Enable Build #
+function UITweaks {
+	# Enable Build # on desktop
 	New-ItemProperty -Force -Path "HKCU:\Control Panel\Desktop" -Name "PaintDesktopVersion" -PropertyType DWord -Value 1
 
 	# Enable Control Panel
-		# On Desktop
+		# Icon On Desktop
 		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\ClassicStartMenu" -Name "{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}" -PropertyType DWord -Value 0
 		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" -Name "{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}" -PropertyType DWord -Value 0
 
@@ -379,15 +377,16 @@ function UITweak {
 		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\ControlPanel" -Name "StartupPage" -PropertyType DWord -Value 1
 		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\ControlPanel" -Name "AllItemsIconView" -PropertyType DWord -Value 1
 
-	# Enable Small Taskbar Icons
-	New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarSmallIcons" -PropertyType DWord -Value 1
-
-	# Enable Taskbar combine when full
-	New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarGlomLevel" -PropertyType DWord -Value 1
-	New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "MMTaskbarGlomLevel" -PropertyType DWord -Value 1
-
-	# Enable Tray icons
-	New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name "NoAutoTrayNotify" -PropertyType DWord -Value 1
+	# Enable Taskbar 
+		# Combine When Full
+		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarGlomLevel" -PropertyType DWord -Value 1
+		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "MMTaskbarGlomLevel" -PropertyType DWord -Value 1
+		
+		# Small Icons
+		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarSmallIcons" -PropertyType DWord -Value 1
+		
+		# Tray Icons
+		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name "NoAutoTrayNotify" -PropertyType DWord -Value 1
 }
 
 function Restart {
@@ -405,12 +404,16 @@ CreateLog "sys-cleanup-function.log" "SysCleanup"
 SysCleanup
 StopLog
 
-CreateLog "ui-tweak-function.log" "UITweak"
-UITweak
+CreateLog "misc-tweaks-function.log" "MiscTweaks"
+MiscTweaks
 StopLog
 
 CreateLog "network-tweaks-function.log" "NetworkTweaks"
 NetworkTweaks
+StopLog
+
+CreateLog "ui-tweaks-function.log" "UITweaks"
+UITweaks
 StopLog
 
 Restart
