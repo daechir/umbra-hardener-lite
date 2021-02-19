@@ -3,18 +3,19 @@
 #
 # Author: Daechir
 # Author URL: https://github.com/daechir
-# Modified Date: 11/25/20
-# Version: v1a
+# Modified Date: 02/19/21
+# Version: v1b
 #
 #
 # ---------------------------------------------------------------------------------------------------------------------
 #
 #
 # Changelog:
-#		v1a
-#			* Add additional bloatware.
-#			* Add MiscTweaks function.
-#			* Cleanup UITweaks function.
+#		v1b
+#			* Add SvcTweaks().
+#			* Add hibernation and sleep tweaks.
+#			* Reduce verbosity via | Out-Null (Not necessary unless debugging).
+#			* Disable logging by default.
 #
 #
 # ---------------------------------------------------------------------------------------------------------------------
@@ -44,6 +45,7 @@ function StopLog {
 
 function SysCleanup {
 	# Bloatware app cleanup
+	# AppxPackage(s)
 	$apps = @(
 		# Microsoft apps
 		"Microsoft.3DBuilder"
@@ -96,7 +98,7 @@ function SysCleanup {
 		"Microsoft.Windows.Photos"
 		"Microsoft.WindowsAlarms"
 		"Microsoft.WindowsCamera"
-		"microsoft.windowscommunicationsapps"
+		"Microsoft.windowscommunicationsapps"
 		"Microsoft.WindowsFeedbackHub"
 		"Microsoft.WindowsMaps"
 		"Microsoft.WindowsPhone"
@@ -174,16 +176,17 @@ function SysCleanup {
 		"XINGAG.XING"
 	)
 
-	write "`n ***** Now removing Appx*Package ***** `n"
+	write "`n ***** Now removing AppxPackage(s) ***** `n"
 
     foreach ($app in $apps) {
 		write "`n $app `n"
-        Get-AppxPackage -AllUsers -Name $app| Remove-AppxPackage
-        Get-AppxProvisionedPackage -Online | Where-Object DisplayName -like $app | Remove-AppxProvisionedPackage -Online
+        Get-AppxPackage -AllUsers -Name $app | Remove-AppxPackage -AllUsers | Out-Null
+        Get-AppxProvisionedPackage -Online | Where-Object DisplayName -like $app | Remove-AppxProvisionedPackage -Online -AllUsers | Out-Null
     }
 
 	# Bloatware features
-	# First round, optional WindowsCapability features
+	# First round, WindowsCapability(s)
+	# Found under Settings -> Apps -> Optional features
 	$features_1 = @(
 		"App.StepsRecorder*"
 		"App.Support.QuickAssist*"
@@ -202,14 +205,15 @@ function SysCleanup {
 		"Print.Management.Console*"
 	)
 
-	write "`n ***** Now removing WindowsCapability features ***** `n"
+	write "`n ***** Now removing WindowsCapability(s) ***** `n"
 
     foreach ($feature in $features_1) {
 		write "`n $feature `n"
 		Get-WindowsCapability -Online | Where-Object { $_.Name -like $feature } | Remove-WindowsCapability -Online | Out-Null
     }
 
-	# Second round, optional WindowsFeature
+	# Second round, WindowsOptionalFeature(s)
+	# Found under Control Panel -> Programs and Features -> Turn Windows features on or off
 	$features_2 = @(
 		"FaxServicesClientPackage"
 		"LegacyComponents"
@@ -236,15 +240,14 @@ function SysCleanup {
 		"WorkFolders-Client"
 	)
 
-	write "`n ***** Now disabling WindowsOptionalFeature ***** `n"
+	write "`n ***** Now disabling WindowsOptionalFeature(s) ***** `n"
 
 	foreach ($feature in $features_2) {
 		write "`n $feature `n"
-		Disable-WindowsOptionalFeature -Online -FeatureName $feature -NoRestart -WarningAction SilentlyContinue | Out-Null
+		Disable-WindowsOptionalFeature -Online -FeatureName $feature -NoRestart | Out-Null
 	}
 
-	# Lastly bloatware apps or programs that can't be removed by normal means because Microsoft marked them as "non-removable"
-	# First round, C:\Windows\SystemApps\
+	# Lastly bloatware app(s) or program(s) that can't be removed by normal means because Microsoft marked them as "non-removable"
 	$paths = @(
 		"C:\Windows\SystemApps\Microsoft.AsyncTextService_8wekyb3d8bbwe"
 		"C:\Windows\SystemApps\Microsoft.BioEnrollment_cw5n1h2txyewy"
@@ -261,132 +264,419 @@ function SysCleanup {
 		"C:\Windows\SystemApps\NcsiUwpApp_8wekyb3d8bbwe"
 		"C:\Windows\SystemApps\ParentalControls_cw5n1h2txyewy"
 		"C:\Windows\SystemApps\Windows.CBSPreview_cw5n1h2txyewy"
+		"C:\Program Files\Internet Explorer"
+		"C:\Program Files (x86)\Internet Explorer"
 	)
 
+	write "`n ***** Now forcefully disabling other Microsoft app(s) or program(s) ***** `n"
+
     foreach ($path in $paths) {
-		$FirstString = -join ((48..57) + (97..122) | Get-Random -Count 16 | % {[char]$_})
+		$pathmanip = Split-Path $path
+		$pathstring = -join ((48..57) + (97..122) | Get-Random -Count 16 | % {[char]$_})
+		$pathstring = "$pathmanip\$pathstring"
 
 		If ((Test-Path "$path")) {
 			If ("$path" -like "MicrosoftEdg*") {
-				Get-Process | Where-Object { $_.Name -like "MicrosoftEdg*" } | Stop-Process
+				Get-Process | Where-Object { $_.Name -like "MicrosoftEdg*" } | Stop-Process | Out-Null
 			}
 
-			Rename-Item "$path" "C:\Windows\SystemApps\$FirstString"
+			Rename-Item "$path" "$pathstring" | Out-Null
+
+			write "`n $path -> $pathstring `n"
 		}
     }
+}
 
-	# Second round, user specified
-	$SecondString = -join ((48..57) + (97..122) | Get-Random -Count 16 | % {[char]$_})
+function SvcTweaks {
+	$services = @(
+		"AarSvc"
+		"AarSvc*"
+		"AJRouter"
+		"ALG"
+		"AppReadiness"
+		"AppXSvc"
+		"AssignedAccessManagerSvc"
+		"autotimesvc"
+		"AxInstSV"
+		"BcastDVRUserService"
+		"BcastDVRUserService*"
+		"BITS"
+		"BluetoothUserService"
+		"BluetoothUserService*"
+		"BTAGService"
+		"BthA2dp"
+		"BthAvctpSvc"
+		"BthEnum"
+		"BthHFEnum"
+		"BthLEEnum"
+		"BthMini"
+		"BTHMODEM"
+		"BTHPORT"
+		"bthserv"
+		"BTHUSB"
+		"bttflt"
+		"CaptureService"
+		"CaptureService*"
+		"cbdhsvc"
+		"cbdhsvc*"
+		"CDPSvc"
+		"CDPUserSvc"
+		"CDPUserSvc*"
+		"CertPropSvc"
+		"ClipSVC"
+		"COMSysApp"
+		"ConsentUxUserSvc"
+		"ConsentUxUserSvc*"
+		"CredentialEnrollmentManagerUserSvc"
+		"CredentialEnrollmentManagerUserSvc*"
+		"defragsvc"
+		"DeviceAssociationBrokerSvc"
+		"DeviceAssociationBrokerSvc*"
+		"DeviceAssociationService"
+		"DevicePickerUserSvc"
+		"DevicePickerUserSvc*"
+		"DevicesFlowUserSvc"
+		"DevicesFlowUserSvc*"
+		"DevQueryBroker"
+		"diagnosticshub.standardcollector.service"
+		"DispBrokerDesktopSvc"
+		"DmEnrollmentSvc"
+		"DoSvc"
+		"DsmSvc"
+		"DsSvc"
+		"DusmSvc"
+		"Eaphost"
+		"embeddedmode"
+		"EntAppSvc"
+		"EventSystem"
+		"fdPHost"
+		"FDResPub"
+		"fhsvc"
+		"FrameServer"
+		"HvHost"
+		"icssvc"
+		"IKEEXT"
+		"InstallService"
+		"iphlpsvc"
+		"IpxlatCfgSvc"
+		"KtmRm"
+		"LanmanServer"
+		"LanmanWorkstation"
+		"lfsvc"
+		"LicenseManager"
+		"lltdsvc"
+		"lmhosts"
+		"LxpSvc"
+		"MessagingService"
+		"MessagingService*"
+		"Microsoft_Bluetooth_AvrcpTransport"
+		"MixedRealityOpenXRSvc"
+		"MSDTC"
+		"MSiSCSI"
+		"NaturalAuthentication"
+		"NcbService"
+		"Netlogon"
+		"NgcCtnrSvc"
+		"NgcSvc"
+		"PcaSvc"
+		"perceptionsimulation"
+		"PerfHost"
+		"PimIndexMaintenanceSvc"
+		"PimIndexMaintenanceSvc*"
+		"pla"
+		"PolicyAgent"
+		"PrintWorkflowUserSvc"
+		"PushToInstall"
+		"QWAVE"
+		"RasAuto"
+		"RasMan"
+		"SCardSvr"
+		"ScDeviceEnum"
+		"SCPolicySvc"
+		"SDRSVC"
+		"seclogon"
+		"SensorDataService"
+		"SensorService"
+		"SensrSvc"
+		"SessionEnv"
+		"SharedAccess"
+		"SharedRealitySvc"
+		"ShellHWDetection"
+		"SNMPTRAP"
+		"spectrum"
+		"Spooler"
+		"SSDPSRV"
+		"SstpSvc"
+		"stisvc"
+		"swprv"
+		"TapiSrv"
+		"TermService"
+		"TokenBroker"
+		"TroubleshootingSvc"
+		"UdkUserSvc"
+		"UdkUserSvc*"
+		"UmRdpService"
+		"UnistoreSvc"
+		"UnistoreSvc*"
+		"upnphost"
+		"UserDataSvc"
+		"UserDataSvc*"
+		"UsoSvc"
+		"VacSvc"
+		"VaultSvc"
+		"vmicguestinterface"
+		"vmicheartbeat"
+		"vmickvpexchange"
+		"vmicrdv"
+		"vmicshutdown"
+		"vmictimesync"
+		"vmicvmsession"
+		"vmicvss"
+		"VSS"
+		"WaaSMedicSvc"
+		"WalletService"
+		"WarpJITSvc"
+		"wbengine"
+		"WbioSrvc"
+		"wcncsvc"
+		"WebClient"
+		"Wecsvc"
+		"WEPHOSTSVC"
+		"wercplsupport"
+		"WerSvc"
+		"WFDSConMgrSvc"
+		"WiaRpc"
+		"wisvc"
+		"wlidsvc"
+		"wlpasvc"
+		"WpcMonSvc"
+		"WPDBusEnum"
+		"WpnService"
+		"WpnService*"
+		"WpnUserService"
+		"WpnUserService*"
+		"wuauserv"
+		"WwanSvc"
+		"XblAuthManager"
+		"XblGameSave"
+		"XboxGipSvc"
+		"XboxNetApiSvc"
+	)
 
-	# Disable Internet Explorer
-	If ((Test-Path "C:\Program Files\Internet Explorer")) {
-		Rename-Item "C:\Program Files\Internet Explorer" "C:\Program Files\$SecondString"
+	# Some services found here aren't listed explicitly under services.msc
+	# You may view those services in HKLM:\SYSTEM\CurrentControlSet\Services\ via regedit.exe
+	write "`n ***** Now disabling preinstalled system service(s) ***** `n"
+
+	foreach ($service in $services) {
+		$servicename = Get-Service -Name "$service" | Select-Object -Property 'Name' | Format-List | Out-String
+		$servicename = $servicename.Replace('Name : ','')
+		$servicename = $servicename.Trim()
+
+		write "`n $servicename `n"
+
+		Stop-Service -Force "$servicename" | Out-Null
+		New-ItemProperty -Force -Path "HKLM:\SYSTEM\CurrentControlSet\Services\$servicename" -Name "Start" -PropertyType DWord -Value 4 | Out-Null
 	}
-	If ((Test-Path "C:\Program Files (x86)\Internet Explorer")) {
-		Rename-Item "C:\Program Files (x86)\Internet Explorer" "C:\Program Files (x86)\$SecondString"
-	}
+
+	# The services below refuse to be disabled using the above method (Some sort of security measure)
+	# Hence we will use Powershells built in Set-Service function instead
+	write "`n TrustedInstaller `n"
+
+	Stop-Service -Force "TrustedInstaller" | Out-Null
+	Set-Service -Name "TrustedInstaller" -StartupType Disabled | Out-Null
+
+	write "`n TrkWks `n"
+
+	Stop-Service -Force "TrkWks" | Out-Null
+	Set-Service -Name "TrkWks" -StartupType Disabled | Out-Null
 }
 
 function MiscTweaks {
+	write "`n ***** Now applying MiscTweak(s) ***** `n"
+
 	# Disable Accessibility Key Prompts (Sticky keys, Toggle keys, Filter keys)
-	New-ItemProperty -Force -Path "HKCU:\Control Panel\Accessibility\StickyKeys" -Name "Flags" -PropertyType String -Value "506"
-	New-ItemProperty -Force -Path "HKCU:\Control Panel\Accessibility\ToggleKeys" -Name "Flags" -PropertyType String -Value "58"
-	New-ItemProperty -Force -Path "HKCU:\Control Panel\Accessibility\Keyboard Response" -Name "Flags" -PropertyType String -Value "122"
-	
+	write "`n Disabling Accessibility Key Prompts `n"
+
+	New-ItemProperty -Force -Path "HKCU:\Control Panel\Accessibility\StickyKeys" -Name "Flags" -PropertyType String -Value "506" | Out-Null
+	New-ItemProperty -Force -Path "HKCU:\Control Panel\Accessibility\ToggleKeys" -Name "Flags" -PropertyType String -Value "58" | Out-Null
+	New-ItemProperty -Force -Path "HKCU:\Control Panel\Accessibility\Keyboard Response" -Name "Flags" -PropertyType String -Value "122" | Out-Null
+
 	# Disable Autoplay
-	New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers" -Name "DisableAutoplay" -PropertyType DWord -Value 1
-	
+	write "`n Disabling Autoplay `n"
+
+	New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers" -Name "DisableAutoplay" -PropertyType DWord -Value 1 | Out-Null
+
 	# Disable Autorun
-	New-ItemProperty -Force -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name "NoDriveTypeAutoRun" -PropertyType DWord -Value 255
-	
+	write "`n Disabling Autorun `n"
+
+	New-ItemProperty -Force -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name "NoDriveTypeAutoRun" -PropertyType DWord -Value 255 | Out-Null
+
+	# Disable Hibernation Feature
+	write "`n Disabling Hibernation Feature `n"
+
+	New-ItemProperty -Force -Path "HKLM:\System\CurrentControlSet\Control\Session Manager\Power" -Name "HibernateEnabled" -PropertyType DWord -Value 0 | Out-Null
+	powercfg /HIBERNATE OFF | Out-Null
+
 	# Disable SharingWizard
-	New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "SharingWizardOn" -PropertyType DWord -Value 0
+	write "`n Disabling SharingWizard `n"
+
+	New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "SharingWizardOn" -PropertyType DWord -Value 0 | Out-Null
+
+	# Disable Sleep Feature
+	write "`n Disabling Sleep Feature `n"
+
+	powercfg /SETACVALUEINDEX SCHEME_CURRENT SUB_BUTTONS SBUTTONACTION 0 | Out-Null
+	powercfg /SETDCVALUEINDEX SCHEME_CURRENT SUB_BUTTONS SBUTTONACTION 0 | Out-Null
+	powercfg /X monitor-timeout-ac 0 | Out-Null
+	powercfg /X monitor-timeout-dc 0 | Out-Null
+	powercfg /X standby-timeout-ac 0 | Out-Null
+	powercfg /X standby-timeout-dc 0 | Out-Null
+
+	# Hide Hibernate and Sleep from flyout menu
+	write "`n Hiding Hibernate and Sleep from flyout menu `n"
+
+	If (!(Test-Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings")) {
+		New-Item -Force -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings" | Out-Null
+	}
+
+	New-ItemProperty -Force -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings" -Name "ShowSleepOption" -PropertyType DWord -Value 0 | Out-Null
+	New-ItemProperty -Force -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FlyoutMenuSettings" -Name "ShowHibernateOption" -PropertyType DWord -Value 0 | Out-Null
 }
 
 function NetworkTweaks {
-	# Disable DNS settings on adapters
+	write "`n ***** Now applying NetworkTweak(s) ***** `n"
+
+	# Disable specific DNS settings on adapters
+	write "`n Disabling specific DNS settings on adapters `n"
+
 		# Append parent suffixes
-		New-ItemProperty -Force -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name "UseDomainNameDevolution" -PropertyType DWord -Value 0
+		write "`n - Append parent suffixes `n"
+
+		New-ItemProperty -Force -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" -Name "UseDomainNameDevolution" -PropertyType DWord -Value 0 | Out-Null
 
 		# Register this connections address in DNS
-		Remove-Item -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\DNSRegisteredAdapters" -Recurse -ErrorAction SilentlyContinue
+		write "`n - Register this connections address in DNS `n"
+
+		Remove-Item -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\DNSRegisteredAdapters" -Recurse -ErrorAction SilentlyContinue | Out-Null
 		Get-ChildItem -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces" | ForEach-Object {
-			New-ItemProperty -Force -Path $_.PsPath -Name "RegistrationEnabled" -PropertyType DWord -Value 0
+			New-ItemProperty -Force -Path $_.PsPath -Name "RegistrationEnabled" -PropertyType DWord -Value 0 | Out-Null
 		}
 
 	# Disable Ipv6
-	Disable-NetAdapterBinding -Name "*" -ComponentID "ms_tcpip6"
-	New-ItemProperty -Force -Path "HKLM:\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters" -Name "DisabledComponents" -PropertyType DWord -Value "0xFFFFFFFF"
+	write "`n Disabling Ipv6 `n"
+
+	Disable-NetAdapterBinding -Name "*" -ComponentID "ms_tcpip6" | Out-Null
+	New-ItemProperty -Force -Path "HKLM:\SYSTEM\CurrentControlSet\Services\TCPIP6\Parameters" -Name "DisabledComponents" -PropertyType DWord -Value "0xFFFFFFFF" | Out-Null
 
 	# Disable LLDP
-	Disable-NetAdapterBinding -Name "*" -ComponentID "ms_lldp"
+	write "`n Disabling LLDP `n"
+
+	Disable-NetAdapterBinding -Name "*" -ComponentID "ms_lldp" | Out-Null
 
 	# Disable LLTD
-	Disable-NetAdapterBinding -Name "*" -ComponentID "ms_lltdio"
-	Disable-NetAdapterBinding -Name "*" -ComponentID "ms_rspndr"
+	write "`n Disabling LLTD `n"
+
+	Disable-NetAdapterBinding -Name "*" -ComponentID "ms_lltdio" | Out-Null
+	Disable-NetAdapterBinding -Name "*" -ComponentID "ms_rspndr" | Out-Null
 
 	# Disable MS Net Client
-	Disable-NetAdapterBinding -Name "*" -ComponentID "ms_msclient"
+	write "`n Disabling MS Net Client `n"
+
+	Disable-NetAdapterBinding -Name "*" -ComponentID "ms_msclient" | Out-Null
 
 	# Disable NetBIOS
-	Get-ChildItem -Path "HKLM:\SYSTEM\CurrentControlSet\Services\NetBT\Parameters\Interfaces" | ForEach-Object {
-		New-ItemProperty -Force -Path $_.PsPath -Name "NetbiosOptions" -PropertyType DWord -Value 2
-	}
-	New-ItemProperty -Force -Path "HKLM:\SYSTEM\CurrentControlSet\Services\NetBT\Parameters" -Name "EnableLMHOSTS" -PropertyType DWord -Value 0
+	write "`n Disabling NetBIOS `n"
 
-	# Disable Power Management Option on Adapters
+	Get-ChildItem -Path "HKLM:\SYSTEM\CurrentControlSet\Services\NetBT\Parameters\Interfaces" | ForEach-Object {
+		New-ItemProperty -Force -Path $_.PsPath -Name "NetbiosOptions" -PropertyType DWord -Value 2 | Out-Null
+	}
+	New-ItemProperty -Force -Path "HKLM:\SYSTEM\CurrentControlSet\Services\NetBT\Parameters" -Name "EnableLMHOSTS" -PropertyType DWord -Value 0 | Out-Null
+
+	# Disable Power Management for adapters
+	write "`n Disabling Power Management for adapters `n"
+
 	foreach ($NIC in (Get-NetAdapter -Physical)){
 		$PowerSaving = Get-CimInstance -ClassName MSPower_DeviceEnable -Namespace root\wmi | ? {$_.InstanceName -match [Regex]::Escape($NIC.PnPDeviceID)}
 		if ($PowerSaving.Enable){
 			$PowerSaving.Enable = $false
-			$PowerSaving | Set-CimInstance
+			$PowerSaving | Set-CimInstance | Out-Null
 		}
 	}
 
 	# Disable QoS
-	Disable-NetAdapterBinding -Name "*" -ComponentID "ms_pacer"
+	write "`n Disabling QoS `n"
+
+	Disable-NetAdapterBinding -Name "*" -ComponentID "ms_pacer" | Out-Null
 
 	# Disable SMB Server
-	Disable-NetAdapterBinding -Name "*" -ComponentID "ms_server"
+	write "`n Disabling SMB Server `n"
+
+	Disable-NetAdapterBinding -Name "*" -ComponentID "ms_server" | Out-Null
 
 	# Harden Windows Firewall
-		# Remove all pre-existing firewall rules
-		netsh advfirewall firewall delete rule name=all
+	write "`n Hardening Windows Firewall `n"
 
-		# Change all firewall profiles to:
+		# Remove all pre-existing firewall rules
+		write "`n - Removing all pre-existing firewall rules `n"
+
+		netsh advfirewall firewall delete rule name=all | Out-Null
+
+		# Alter all firewall profiles to:
 		# Block inbound & outbound unless specified
 		# Disable notifications
 		# Disable unicast responses
 		# Disable all logging
-		Set-NetFirewallProfile -Profile Domain,Public,Private -DefaultInboundAction Block -DefaultOutboundAction Block -NotifyOnListen False -AllowUnicastResponseToMulticast False -LogAllowed False -LogBlocked False -LogIgnored False
+		write "`n - Altering all firewall profiles `n"
+
+		Set-NetFirewallProfile -Profile Domain,Public,Private -DefaultInboundAction Block -DefaultOutboundAction Block -NotifyOnListen False -AllowUnicastResponseToMulticast False -LogAllowed False -LogBlocked False -LogIgnored False | Out-Null
 
 	# Set current network profile to public
-	Set-NetConnectionProfile -NetworkCategory Public
+	write "`n Setting the current network profile to public `n"
+
+	Set-NetConnectionProfile -NetworkCategory Public | Out-Null
 }
 
 function UITweaks {
+	write "`n ***** Now applying UITweak(s) ***** `n"
+
 	# Enable Build # on desktop
-	New-ItemProperty -Force -Path "HKCU:\Control Panel\Desktop" -Name "PaintDesktopVersion" -PropertyType DWord -Value 1
+	write "`n Enabling Build # on desktop `n"
+
+	New-ItemProperty -Force -Path "HKCU:\Control Panel\Desktop" -Name "PaintDesktopVersion" -PropertyType DWord -Value 1 | Out-Null
 
 	# Enable Control Panel
 		# Icon On Desktop
-		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\ClassicStartMenu" -Name "{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}" -PropertyType DWord -Value 0
-		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" -Name "{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}" -PropertyType DWord -Value 0
+		write "`n Enabling Control Panel Icon On Desktop `n"
+
+		If (!(Test-Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\ClassicStartMenu")) {
+			New-Item -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\ClassicStartMenu" | Out-Null
+		}
+
+		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\ClassicStartMenu" -Name "{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}" -PropertyType DWord -Value 0 | Out-Null
+		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" -Name "{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}" -PropertyType DWord -Value 0 | Out-Null
 
 		# Small Icons
-		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\ControlPanel" -Name "StartupPage" -PropertyType DWord -Value 1
-		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\ControlPanel" -Name "AllItemsIconView" -PropertyType DWord -Value 1
+		write "`n Enabling Control Panel Small Icons `n"
 
-	# Enable Taskbar 
+		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\ControlPanel" -Name "StartupPage" -PropertyType DWord -Value 1 | Out-Null
+		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\ControlPanel" -Name "AllItemsIconView" -PropertyType DWord -Value 1 | Out-Null
+
+	# Enable Taskbar
 		# Combine When Full
-		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarGlomLevel" -PropertyType DWord -Value 1
-		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "MMTaskbarGlomLevel" -PropertyType DWord -Value 1
-		
+		write "`n Enabling Taskbar Combine When Full `n"
+
+		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarGlomLevel" -PropertyType DWord -Value 1 | Out-Null
+		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "MMTaskbarGlomLevel" -PropertyType DWord -Value 1 | Out-Null
+
 		# Small Icons
-		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarSmallIcons" -PropertyType DWord -Value 1
-		
+		write "`n Enabling Taskbar Small Icons `n"
+
+		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarSmallIcons" -PropertyType DWord -Value 1 | Out-Null
+
 		# Tray Icons
-		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name "NoAutoTrayNotify" -PropertyType DWord -Value 1
+		write "`n Enabling Taskbar Tray Icons `n"
+
+		New-ItemProperty -Force -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer" -Name "NoAutoTrayNotify" -PropertyType DWord -Value 1 | Out-Null
 }
 
 function Restart {
@@ -400,21 +690,25 @@ function Restart {
 
 RequireAdmin
 
-CreateLog "sys-cleanup-function.log" "SysCleanup"
+#CreateLog "sys-cleanup-function.log" "SysCleanup"
 SysCleanup
-StopLog
+#StopLog
 
-CreateLog "misc-tweaks-function.log" "MiscTweaks"
+#CreateLog "svc-tweaks.log" "SvcTweaks"
+SvcTweaks
+#StopLog
+
+#CreateLog "misc-tweaks-function.log" "MiscTweaks"
 MiscTweaks
-StopLog
+#StopLog
 
-CreateLog "network-tweaks-function.log" "NetworkTweaks"
+#CreateLog "network-tweaks-function.log" "NetworkTweaks"
 NetworkTweaks
-StopLog
+#StopLog
 
-CreateLog "ui-tweaks-function.log" "UITweaks"
+#CreateLog "ui-tweaks-function.log" "UITweaks"
 UITweaks
-StopLog
+#StopLog
 
 Restart
 

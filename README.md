@@ -2,26 +2,32 @@
 Author: Daechir <br/>
 Author URL: https://github.com/daechir <br/>
 License: GNU GPL <br/>
-Modified Date: 11/25/20 <br/>
-Version: v1a
+Modified Date: 02/19/21 <br/>
+Version: v1b
 
 
 ## Purpose
 Umbra Hardener Lite serves as a custom automated hardening script to further lockdown Windows 10 systems by:
 + Removing Microsoft bloatware.
 + Removing frequently unused features.
++ Disabling over 85% of all preinstalled system services (Only those that are actually necessary are kept intact).
 + Hardening the network stack.
 + Customizing the UI.
 
 
 ## Origin
 Umbra Hardener Lite is the child of [Umbra Hardener](https://github.com/daechir/umbra-hardener) which is now discontinued.<br/>
-Compared to its parent Umbra Hardener Lite is roughly 800-1000 lines smaller.
+The original Umbra Hardener was discontinued because it became too large for a single person to maintain.<br/>
+Moreover certain features like Cortana, Telemetry and etc are a constantly moving target with Microsoft changing them almost every new Windows version.<br/>
+Compared to its parent Umbra Hardener Lite is roughly 500-800 lines smaller and does just as much.
 
 
 ## Guidelines:
-My recommendation is to use this script on a "debloated", "lite" or "superlite" Windows 10 ISO (Ones with telemetry removed and etc).<br/>
-An example iso you could use is [Ghost n Spectre ISO's](https://www.youtube.com/channel/UCiUsCRw_cxsod_ZQ-ebDxTQ).
+My recommendation is to use this script on a "debloated", "lite" or "superlite" Windows 10 ISO (Ones with bloat, telemetry and etc already removed).<br/>
+An example ISO you could use is [GHOST ᴻ Spectre](https://www.youtube.com/watch?v=B-P1u2LmShc%E2%80%8B).<br/>
+Choose your ISO wisely as some may contain a backdoor, a undetectable rootkit, some other form of malware or even keyloggers.<br/>
+After you've chosen a ISO and installed it on your system then run this script.<br/>
+Afterwards you should also run a privacy tool like [O&O ShutUp10](https://www.oo-software.com/en/shutup10).
 
 
 ## Supported Versions
@@ -32,4 +38,8 @@ An example iso you could use is [Ghost n Spectre ISO's](https://www.youtube.com/
  | 1909 | Home x64 - Pro x64 | Yes |
  | 1903 | Home x64 - Pro x64 | Yes |
  | 1809 | Home x64 - Pro x64 | Yes |
+
+
+## Known Issues
++ Some areas of the ImmersiveControlPanel (Settings app) become inaccessible after usage. This has been a ongoing issue since v1809 and rarely happened before it.
 
