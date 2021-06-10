@@ -3,19 +3,18 @@
 #
 # Author: Daechir
 # Author URL: https://github.com/daechir
-# Modified Date: 02/19/21
-# Version: v1b
+# Modified Date: 06/09/21
+# Version: v1c
 #
 #
 # ---------------------------------------------------------------------------------------------------------------------
 #
 #
 # Changelog:
-#		v1b
-#			* Add SvcTweaks().
-#			* Add hibernation and sleep tweaks.
-#			* Reduce verbosity via | Out-Null (Not necessary unless debugging).
-#			* Disable logging by default.
+#		v1c
+#			* Fix the majority of inaccessible areas in the ImmersiveControlPanel (Settings app).
+#			* Add system restore point tweaks.
+#			* Add some basic firewall rules.
 #
 #
 # ---------------------------------------------------------------------------------------------------------------------
@@ -289,18 +288,12 @@ function SysCleanup {
 
 function SvcTweaks {
 	$services = @(
-		"AarSvc"
-		"AarSvc*"
 		"AJRouter"
 		"ALG"
 		"AppReadiness"
-		"AppXSvc"
 		"AssignedAccessManagerSvc"
-		"autotimesvc"
-		"AxInstSV"
 		"BcastDVRUserService"
 		"BcastDVRUserService*"
-		"BITS"
 		"BluetoothUserService"
 		"BluetoothUserService*"
 		"BTAGService"
@@ -314,86 +307,47 @@ function SvcTweaks {
 		"BTHPORT"
 		"bthserv"
 		"BTHUSB"
-		"bttflt"
-		"CaptureService"
-		"CaptureService*"
-		"cbdhsvc"
-		"cbdhsvc*"
 		"CDPSvc"
 		"CDPUserSvc"
 		"CDPUserSvc*"
-		"CertPropSvc"
-		"ClipSVC"
-		"COMSysApp"
-		"ConsentUxUserSvc"
-		"ConsentUxUserSvc*"
-		"CredentialEnrollmentManagerUserSvc"
-		"CredentialEnrollmentManagerUserSvc*"
-		"defragsvc"
 		"DeviceAssociationBrokerSvc"
 		"DeviceAssociationBrokerSvc*"
 		"DeviceAssociationService"
-		"DevicePickerUserSvc"
-		"DevicePickerUserSvc*"
-		"DevicesFlowUserSvc"
-		"DevicesFlowUserSvc*"
 		"DevQueryBroker"
-		"diagnosticshub.standardcollector.service"
-		"DispBrokerDesktopSvc"
-		"DmEnrollmentSvc"
-		"DoSvc"
-		"DsmSvc"
 		"DsSvc"
-		"DusmSvc"
 		"Eaphost"
 		"embeddedmode"
 		"EntAppSvc"
-		"EventSystem"
 		"fdPHost"
 		"FDResPub"
 		"fhsvc"
-		"FrameServer"
 		"HvHost"
 		"icssvc"
 		"IKEEXT"
-		"InstallService"
 		"iphlpsvc"
 		"IpxlatCfgSvc"
 		"KtmRm"
 		"LanmanServer"
 		"LanmanWorkstation"
 		"lfsvc"
-		"LicenseManager"
 		"lltdsvc"
 		"lmhosts"
 		"LxpSvc"
-		"MessagingService"
-		"MessagingService*"
 		"Microsoft_Bluetooth_AvrcpTransport"
 		"MixedRealityOpenXRSvc"
-		"MSDTC"
 		"MSiSCSI"
-		"NaturalAuthentication"
 		"NcbService"
 		"Netlogon"
-		"NgcCtnrSvc"
-		"NgcSvc"
-		"PcaSvc"
 		"perceptionsimulation"
-		"PerfHost"
-		"PimIndexMaintenanceSvc"
-		"PimIndexMaintenanceSvc*"
-		"pla"
 		"PolicyAgent"
 		"PrintWorkflowUserSvc"
-		"PushToInstall"
+		"PrintWorkflowUserSvc*"
 		"QWAVE"
 		"RasAuto"
 		"RasMan"
 		"SCardSvr"
 		"ScDeviceEnum"
 		"SCPolicySvc"
-		"SDRSVC"
 		"seclogon"
 		"SensorDataService"
 		"SensorService"
@@ -401,29 +355,18 @@ function SvcTweaks {
 		"SessionEnv"
 		"SharedAccess"
 		"SharedRealitySvc"
-		"ShellHWDetection"
 		"SNMPTRAP"
 		"spectrum"
 		"Spooler"
 		"SSDPSRV"
 		"SstpSvc"
 		"stisvc"
-		"swprv"
 		"TapiSrv"
 		"TermService"
-		"TokenBroker"
-		"TroubleshootingSvc"
-		"UdkUserSvc"
-		"UdkUserSvc*"
+		"tzautoupdate"
 		"UmRdpService"
-		"UnistoreSvc"
-		"UnistoreSvc*"
 		"upnphost"
-		"UserDataSvc"
-		"UserDataSvc*"
-		"UsoSvc"
 		"VacSvc"
-		"VaultSvc"
 		"vmicguestinterface"
 		"vmicheartbeat"
 		"vmickvpexchange"
@@ -432,30 +375,15 @@ function SvcTweaks {
 		"vmictimesync"
 		"vmicvmsession"
 		"vmicvss"
-		"VSS"
-		"WaaSMedicSvc"
 		"WalletService"
 		"WarpJITSvc"
-		"wbengine"
-		"WbioSrvc"
 		"wcncsvc"
 		"WebClient"
-		"Wecsvc"
 		"WEPHOSTSVC"
-		"wercplsupport"
-		"WerSvc"
 		"WFDSConMgrSvc"
 		"WiaRpc"
-		"wisvc"
-		"wlidsvc"
-		"wlpasvc"
 		"WpcMonSvc"
 		"WPDBusEnum"
-		"WpnService"
-		"WpnService*"
-		"WpnUserService"
-		"WpnUserService*"
-		"wuauserv"
 		"WwanSvc"
 		"XblAuthManager"
 		"XblGameSave"
@@ -477,18 +405,6 @@ function SvcTweaks {
 		Stop-Service -Force "$servicename" | Out-Null
 		New-ItemProperty -Force -Path "HKLM:\SYSTEM\CurrentControlSet\Services\$servicename" -Name "Start" -PropertyType DWord -Value 4 | Out-Null
 	}
-
-	# The services below refuse to be disabled using the above method (Some sort of security measure)
-	# Hence we will use Powershells built in Set-Service function instead
-	write "`n TrustedInstaller `n"
-
-	Stop-Service -Force "TrustedInstaller" | Out-Null
-	Set-Service -Name "TrustedInstaller" -StartupType Disabled | Out-Null
-
-	write "`n TrkWks `n"
-
-	Stop-Service -Force "TrkWks" | Out-Null
-	Set-Service -Name "TrkWks" -StartupType Disabled | Out-Null
 }
 
 function MiscTweaks {
@@ -531,6 +447,11 @@ function MiscTweaks {
 	powercfg /X monitor-timeout-dc 0 | Out-Null
 	powercfg /X standby-timeout-ac 0 | Out-Null
 	powercfg /X standby-timeout-dc 0 | Out-Null
+
+	# Disable System Restore Points
+	write "`n Disabling System Restore Points `n"
+
+	Disable-ComputerRestore -Drive "C:\" | Out-Null
 
 	# Hide Hibernate and Sleep from flyout menu
 	write "`n Hiding Hibernate and Sleep from flyout menu `n"
@@ -630,10 +551,33 @@ function NetworkTweaks {
 
 		Set-NetFirewallProfile -Profile Domain,Public,Private -DefaultInboundAction Block -DefaultOutboundAction Block -NotifyOnListen False -AllowUnicastResponseToMulticast False -LogAllowed False -LogBlocked False -LogIgnored False | Out-Null
 
-	# Set current network profile to public
-	write "`n Setting the current network profile to public `n"
+		# Set current network profile to public
+		write "`n - Setting the current network profile to public `n"
 
-	Set-NetConnectionProfile -NetworkCategory Public | Out-Null
+		Set-NetConnectionProfile -NetworkCategory Public | Out-Null
+
+		# Setup some basic firewall rules
+		write "`n - Setting up some basic firewall rules `n"
+
+		$offlineonly =  ""
+
+		if ( $offlineonly ) {
+			# Inbound
+			netsh advfirewall firewall add rule name="Block All Networking" dir=in action=block profile=any enable=yes | Out-Null
+
+			# Outbound
+			netsh advfirewall firewall add rule name="Block All Networking" dir=out action=block profile=any enable=yes | Out-Null
+		} else {
+			# Inbound
+			netsh advfirewall firewall add rule name="Block Domain and Private Networking" dir=in action=block profile=domain,private enable=yes | Out-Null
+			netsh advfirewall firewall add rule name="Core Networking - DHCP" dir=in action=allow program="%SystemRoot%\system32\svchost.exe" protocol=UDP localport=68 remoteport=67 profile=public enable=yes | Out-Null
+
+			# Outbound
+			netsh advfirewall firewall add rule name="Block Domain and Private Networking" dir=out action=block profile=domain,private enable=yes | Out-Null
+			netsh advfirewall firewall add rule name="Block Windows Update" dir=out action=block program="%SystemRoot%\system32\svchost.exe" protocol=TCP remoteport=80,443 profile=any enable=yes | Out-Null
+			netsh advfirewall firewall add rule name="Core Networking - DNS" dir=out action=allow program="%SystemRoot%\system32\svchost.exe" protocol=UDP remoteport=53 profile=public enable=yes | Out-Null
+			netsh advfirewall firewall add rule name="Core Networking - DHCP" dir=out action=allow program="%SystemRoot%\system32\svchost.exe" protocol=UDP localport=68 remoteport=67 profile=public enable=yes | Out-Null
+		}
 }
 
 function UITweaks {
